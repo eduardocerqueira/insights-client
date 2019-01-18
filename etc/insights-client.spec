@@ -1,9 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 %define _binaries_in_noarch_packages_terminate_build 0
 
-%global insights_user  insights
-%global insights_group %{insights_user}
-
 Name:                   insights-client
 Summary:                Uploads Insights information to Red Hat on a periodic basis
 Version:                3.0.3
@@ -56,12 +53,6 @@ Sends insightful information to Red Hat for automated analysis
 rm -rf ${RPM_BUILD_ROOT}
 %{__python} setup.py install --root=${RPM_BUILD_ROOT} $PREFIX
 
-%pre
-getent group insights > /dev/null || /usr/sbin/groupadd -r %{insights_group}
-getent passwd insights > /dev/null || \
-    /usr/sbin/useradd -g insights -r --shell /sbin/nologin %{insights_user} \
-    -c "Red Hat Insights" -d /var/lib/insights
-
 %post
 
 %if 0%{?rhel} != 6
@@ -109,36 +100,19 @@ if  [ $1 -eq 1  ]; then
 fi
 
 # if the logging directory isnt created then make it
-# and set the ACLs
 if ! [ -d "/var/log/insights-client" ]; then
 mkdir /var/log/insights-client
 fi
-setfacl -Rd -m g:insights:rwX /var/log/insights-client
-setfacl -m g:insights:rwX /var/log/insights-client
 
 # if the library directory for eggs and such isn't present
-# make it AND
-# set the ACLs
+# make it
 if ! [ -d "/var/lib/insights" ]; then
 mkdir /var/lib/insights
 fi
-setfacl -Rd -m g:insights:rwX /var/lib/insights
-setfacl -R -m g:insights:rwX /var/lib/insights
-
-# set some more ACLs
-setfacl -Rd -m g:insights:rwX -m m:rw /etc/insights-client
-setfacl -R -m g:insights:rwX -m m:rw /etc/insights-client
-setfacl -m g:insights:r -m m:r /etc/insights-client/*.pem
-setfacl -m g:insights:r -m m:r /etc/insights-client/redhattools.pub.gpg
-setfacl -m g:insights:rw -m m:rw /etc/insights-client/insights-client.conf
-setfacl -m g:insights:r -m m:r /etc/insights-client/rpm.egg
-setfacl -m g:insights:r -m m:r /etc/insights-client/rpm.egg.asc
-setfacl -m g:insights:rwx /etc/insights-client
 
 # if ansible is present
 # make the fact directory AND
 # the fact file AND
-# set the ACLs
 if [ -d "/etc/ansible" ]; then
 if ! [ -d "/etc/ansible/facts.d" ]; then
 mkdir /etc/ansible/facts.d
@@ -147,8 +121,6 @@ fi
 if [ -d "/etc/ansible/facts.d" ]; then
 touch /etc/ansible/facts.d/insights.fact
 touch /etc/ansible/facts.d/insights_machine_id.fact
-setfacl -m g:insights:rw /etc/ansible/facts.d/insights.fact
-setfacl -m g:insights:rw /etc/ansible/facts.d/insights_machine_id.fact
 fi
 
 
@@ -161,15 +133,6 @@ ln -sf /etc/insights-client/.registered /etc/redhat-access-insights/.registered
 ln -sf /etc/insights-client/.unregistered /etc/redhat-access-insights/.unregistered
 ln -sf /etc/insights-client/.lastupload /etc/redhat-access-insights/.lastupload
 ln -sf /etc/insights-client/machine-id /etc/redhat-access-insights/machine-id
-if [ -f "/etc/insights-client/.lastupload" ]; then
-    setfacl -m g:insights:rwx /etc/insights-client/.lastupload
-fi
-if [ -f "/etc/insights-client/.registered" ]; then
-    setfacl -m g:insights:rwx /etc/insights-client/.registered
-fi
-if [ -f "/etc/insights-client/.unregistered" ]; then
-    setfacl -m g:insights:rwx /etc/insights-client/.unregistered
-fi
 
 %preun
 %if 0%{?rhel} != 6
